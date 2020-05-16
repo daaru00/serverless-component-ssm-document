@@ -34,7 +34,7 @@ const getClients = (credentials, region) => {
     throw new Error(msg)
   }
 
-  const ssm = new AWS.SSM({ credentials, region, logger: console })
+  const ssm = new AWS.SSM({ credentials, region })
   return { ssm }
 }
 

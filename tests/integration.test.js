@@ -7,8 +7,8 @@ const { getServerlessSdk, getCredentials } = require('./utils')
 jest.setTimeout(30000)
 
 // configurations
-const documentFile = path.join(__dirname, 'document.yml')
-const documentFileChanged = path.join(__dirname, 'document-changed.yml')
+const documentFile = 'document.yml'
+const documentFileChanged = 'document-changed.yml'
 const slsConfig = {
   debug: true
 }
@@ -22,14 +22,10 @@ const instanceYaml = {
   stage: 'dev',
   inputs: {
     src: __dirname,
-    file: 'document.yml',
+    file: documentFile,
     region: process.env.AWS_DEFAULT_REGION
   }
 }
-
-// we need to keep the initial instance state after first deployment
-// to validate removal later
-let firstInstanceState
 
 // get aws credentials from env
 const credentials = getCredentials()
@@ -38,36 +34,40 @@ const { ssm } = getClients(credentials.aws, process.env.AWS_DEFAULT_REGION)
 // get serverless access key from env and construct sdk
 const sdk = getServerlessSdk(instanceYaml.org)
 
-// clean up the instance after tests
-afterAll(async () => {
-  await sdk.remove(instanceYaml, credentials)
-})
-
 it('should successfully deploy ssm document', async () => {
   const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
-
-  // store the initial state for removal validation later on
-  firstInstanceState = instance.state
   expect(instance.outputs.name).toBeDefined()
 
   const document = await getSSMDocument(ssm, instance.outputs.name, '$LATEST', 'YAML')
   expect(document.name).toEqual(instance.outputs.name)
-  expect(document.content).toEqual(fs.readFileSync(documentFile).toString())
+  expect(document.content).toEqual(fs.readFileSync(path.join(__dirname, documentFile)).toString())
+
+  await sdk.remove(instanceYaml, credentials)
 })
 
 it('should successfully update content', async () => {
-  instanceYaml.inputs.file = 'document-changed.yml'
-
   const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
-  firstInstanceState = instance.state
+  expect(instance.outputs.name).toBeDefined()
+
+  instanceYaml.inputs.file = documentFileChanged
+
+  await sdk.deploy(instanceYaml, credentials, slsConfig)
+  expect(instance.outputs.name).toBeDefined()
 
   const document = await getSSMDocument(ssm, instance.outputs.name, '$LATEST', 'YAML')
-  expect(document.content).toEqual(fs.readFileSync(documentFileChanged).toString())
+  expect(document.content).toEqual(
+    fs.readFileSync(path.join(__dirname, documentFileChanged)).toString()
+  )
+
+  await sdk.remove(instanceYaml, credentials)
 })
 
 it('should successfully remove document', async () => {
+  const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
+  expect(instance.outputs.name).toBeDefined()
+
   await sdk.remove(instanceYaml, credentials, slsConfig)
 
-  const document = await getSSMDocument(ssm, firstInstanceState.name)
+  const document = await getSSMDocument(ssm, instance.outputs.name)
   expect(document).toBeNull()
 })
