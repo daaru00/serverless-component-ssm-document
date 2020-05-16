@@ -1,0 +1,14 @@
+schemaVersion: "2.2"
+description: "Example document with some changes"
+parameters:
+  Message:
+    type: "String"
+    description: "Example parameter"
+    default: "Hello World"
+mainSteps:
+  - action: "aws:runPowerShellScript"
+    name: "example"
+    inputs:
+      workingDirectory: "/tmp/"
+      runCommand:
+      - "echo {{Message}} > test.txt && cat test.txt && rm test.txt"

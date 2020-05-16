@@ -1,0 +1,13 @@
+schemaVersion: "2.2"
+description: "Example document"
+parameters:
+  Message:
+    type: "String"
+    description: "Example parameter"
+    default: "Hello World"
+mainSteps:
+  - action: "aws:runPowerShellScript"
+    name: "example"
+    inputs:
+      runCommand:
+      - "echo {{Message}}"

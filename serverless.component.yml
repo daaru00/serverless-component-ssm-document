@@ -1,0 +1,10 @@
+name: aws-ssm-document
+version: 2.0.0
+author: daaru
+org: daaru
+description: Deploys an AWS System Manager Document
+keywords: aws, serverless, ssm
+repo: https://github.com/daaru00/serverless-component-ssm-document
+readme: ''
+license: MIT
+main: ./src

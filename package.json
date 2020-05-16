@@ -1,0 +1,30 @@
+{
+  "name": "@serverless/aws-ssm-document",
+  "version": "1.0.0",
+  "main": "./serverless.js",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "publish": "serverless publish",
+    "publish:dev": "serverless registry publish --dev",
+    "test": "jest ./tests/integration.test.js --testEnvironment node --verbose=true",
+    "lint": "eslint . --fix --cache"
+  },
+  "author": "Fabio Gollinucci <fbgolly@gmail.com>",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@serverless/platform-client": "^0.24.0",
+    "aws-sdk": "^2.646.0",
+    "babel-eslint": "9.0.0",
+    "dotenv": "^8.2.0",
+    "eslint": "5.6.0",
+    "eslint-config-prettier": "^3.6.0",
+    "eslint-plugin-import": "^2.18.0",
+    "eslint-plugin-prettier": "^3.0.1",
+    "jest": "^25.2.0",
+    "prettier": "^1.18.2",
+    "serverless": "^1.71.1"
+  }
+}
