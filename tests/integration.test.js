@@ -7,6 +7,7 @@ const { getServerlessSdk, getCredentials } = require('./utils')
 jest.setTimeout(30000)
 
 // configurations
+const srcPath = path.join(__dirname, 'src')
 const documentFile = 'document.yml'
 const documentFileChanged = 'document-changed.yml'
 const slsConfig = {
@@ -21,7 +22,7 @@ const instanceYaml = {
   name: `aws-ssm-integration-tests-${randomId()}`,
   stage: 'dev',
   inputs: {
-    src: __dirname,
+    src: srcPath,
     file: documentFile,
     region: process.env.AWS_DEFAULT_REGION
   }
@@ -40,7 +41,7 @@ it('should successfully deploy ssm document', async () => {
 
   const document = await getSSMDocument(ssm, instance.outputs.name, '$LATEST', 'YAML')
   expect(document.name).toEqual(instance.outputs.name)
-  expect(document.content).toEqual(fs.readFileSync(path.join(__dirname, documentFile)).toString())
+  expect(document.content).toEqual(fs.readFileSync(path.join(srcPath, documentFile)).toString())
 
   await sdk.remove(instanceYaml, credentials)
 })
@@ -56,7 +57,7 @@ it('should successfully update content', async () => {
 
   const document = await getSSMDocument(ssm, instance.outputs.name, '$LATEST', 'YAML')
   expect(document.content).toEqual(
-    fs.readFileSync(path.join(__dirname, documentFileChanged)).toString()
+    fs.readFileSync(path.join(srcPath, documentFileChanged)).toString()
   )
 
   await sdk.remove(instanceYaml, credentials)
