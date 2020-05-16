@@ -1,3 +1,17 @@
+# AWS System Manager Document Component 
+
+This component create an [AWS System Manager Document](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-ssm-docs.html),
+also update the latest version during change apply.
+
+## Before Starting
+
+This repository is not part of official [Serverless Components repository](https://github.com/serverless/components).
+This is an experimental component built following "Building Components" section guide.
+
+## Getting Started
+
+For more information about Serverless Components follow [official guide](https://github.com/serverless/components).
+
 ### 1. Install
 
 To get started with component, install the latest version of the Serverless Framework:
@@ -59,7 +73,7 @@ mainSteps:
       input 3: "{{ parameter 1 }}"
 ```
 
-For more details about SSM Document syntax check https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-doc-syntax.html
+For more details about SSM Document syntax check [AWS Documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-doc-syntax.html)
 
 ### 4. Deploy
 
