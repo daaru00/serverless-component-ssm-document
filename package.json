@@ -6,6 +6,8 @@
     "access": "public"
   },
   "scripts": {
+    "deploy": "serverless deploy --debug",
+    "remove": "serverless remove --debug",
     "publish": "serverless publish",
     "publish:dev": "serverless registry publish --dev",
     "test": "jest ./tests/integration.test.js --testEnvironment node --verbose=true",

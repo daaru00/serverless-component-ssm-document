@@ -1,3 +1,5 @@
+const fs = require('fs')
+const path = require('path')
 const AWS = require('aws-sdk')
 
 /**
@@ -32,7 +34,7 @@ const getClients = (credentials, region) => {
     throw new Error(msg)
   }
 
-  const ssm = new AWS.SSM({ credentials, region, logger: log })
+  const ssm = new AWS.SSM({ credentials, region, logger: console })
   return { ssm }
 }
 
@@ -41,9 +43,10 @@ const getClients = (credentials, region) => {
  * @param {AWS.SSM} ssm
  * @param {string} documentName
  * @param {string} documentVersion
+ * @param {string} documentFormat
  * @returns {object|null}
  */
-const getSSMDocument = async (ssm, documentName, documentVersion) => {
+const getSSMDocument = async (ssm, documentName, documentVersion, documentFormat) => {
   if (!documentName) {
     return null
   }
@@ -51,7 +54,8 @@ const getSSMDocument = async (ssm, documentName, documentVersion) => {
     const res = await ssm
       .getDocument({
         Name: documentName,
-        DocumentVersion: documentVersion
+        DocumentVersion: documentVersion || '$LATEST',
+        DocumentFormat: documentFormat
       })
       .promise()
 
@@ -65,7 +69,7 @@ const getSSMDocument = async (ssm, documentName, documentVersion) => {
       content: res.Content
     }
   } catch (e) {
-    if (e.code === 'DocumentNotFoundException') {
+    if (e.code === 'InvalidDocument') {
       return null
     }
     throw e
@@ -79,8 +83,27 @@ const getSSMDocument = async (ssm, documentName, documentVersion) => {
  * @param {string} stage
  */
 const prepareInputs = (inputs, state, stage) => {
+  let { content } = inputs
+  let format = inputs.format || state.format
+  if (inputs.file) {
+    if (fs.existsSync(inputs.file) == false) {
+      throw new Error(
+        `Cannot find input file ${inputs.file}. Check if file path is relative to src input settings.`
+      )
+    }
+    content = fs.readFileSync(inputs.file).toString()
+    format = path
+      .extname(inputs.file)
+      .slice(1)
+      .toUpperCase()
+    format = format === 'YML' ? 'YAML' : format
+  }
   return {
-    name: inputs.name || state.name || `aws-document-${stage}-${randomId()}`
+    name: inputs.name || state.name || `${stage}-${randomId()}`,
+    type: inputs.type || state.type || 'Command',
+    format,
+    content,
+    file: inputs.file
   }
 }
 
@@ -95,6 +118,7 @@ const createSSMDocument = async (ssm, inputs) => {
     .createDocument({
       Name: inputs.name,
       DocumentType: inputs.type,
+      DocumentFormat: inputs.format,
       Content: inputs.content
     })
     .promise()
@@ -118,17 +142,43 @@ const createSSMDocument = async (ssm, inputs) => {
  * @returns {AWS.SSM.CreateDocumentResult}
  */
 const updateSSMDocument = async (ssm, documentName, inputs) => {
-  const res = await ssm
-    .updateDocument({
-      Name: documentName,
-      Content: inputs.content
-    })
-    .promise()
+  let res
+  try {
+    res = await ssm
+      .updateDocument({
+        Name: documentName,
+        Content: inputs.content,
+        DocumentVersion: '$LATEST'
+      })
+      .promise()
+
+    await ssm
+      .updateDocumentDefaultVersion({
+        Name: documentName,
+        DocumentVersion: res.DocumentDescription.DocumentVersion
+      })
+      .promise()
+
+    res.DocumentDescription.DefaultVersion = res.DocumentDescription.DefaultVersion
+  } catch (e) {
+    if (e.code !== 'DuplicateDocumentContent') {
+      throw e
+    } else {
+      res = {
+        DocumentDescription: await ssm
+          .getDocument({
+            Name: documentName,
+            DocumentVersion: '$LATEST'
+          })
+          .promise()
+      }
+    }
+  }
 
   return {
     name: res.DocumentDescription.Name,
     versionName: res.DocumentDescription.VersionName,
-    defaultVersion: res.DocumentDescription.DefaultVersion,
+    defaultVersion: res.DocumentDescription.DocumentVersion,
     latestVersion: res.DocumentDescription.LatestVersion,
     createdDate: res.DocumentDescription.CreatedDate,
     hashType: res.DocumentDescription.HashType,
@@ -142,11 +192,17 @@ const updateSSMDocument = async (ssm, documentName, inputs) => {
  * @param {string} documentName
  */
 const deleteDocument = async (ssm, documentName) => {
-  await ssm
-    .deleteDocument({
-      Name: documentName
-    })
-    .promise()
+  try {
+    await ssm
+      .deleteDocument({
+        Name: documentName
+      })
+      .promise()
+  } catch (e) {
+    if (e.code !== 'InvalidDocument') {
+      throw e
+    }
+  }
 }
 
 /**

@@ -1,3 +1,4 @@
+const path = require('path')
 const { Component } = require('@serverless/core')
 const {
   log,
@@ -9,7 +10,7 @@ const {
   deleteDocument
 } = require('./utils')
 
-module.exports = class AwsSSMDocument extends Component {
+class AwsSSMDocument extends Component {
   /**
    * Deploy
    * @param {*} inputs
@@ -19,7 +20,7 @@ module.exports = class AwsSSMDocument extends Component {
     const { ssm } = getClients(this.credentials.aws, inputs.region)
 
     // Throw error on name change
-    if (this.state.name && this.state.name !== inputs.name) {
+    if (this.state.name && inputs.name !== undefined && this.state.name !== inputs.name) {
       throw new Error(
         `Changing the name from ${this.state.name} to ${inputs.name} will delete the AWS SSM document.  Please remove it manually, change the name, then re-deploy.`
       )
@@ -33,18 +34,20 @@ module.exports = class AwsSSMDocument extends Component {
     }
 
     // Prepare inputs
+    if (inputs.file) {
+      const filesPath = await this.unzip(inputs.src, true)
+      inputs.file = path.join(filesPath, inputs.file)
+    }
     inputs = prepareInputs(inputs, this.state, this.stage)
 
     // Check previous document
-    log(`Checking if an AWS SSM Document has already been created with name: ${inputs.name}`)
     let prevDocument = null
-    if (!this.state || !this.state.name) {
-      prevDocument = await getSSMDocument(ssm, inputs.name)
-    }
+    log(`Checking if an AWS SSM Document has already been created with name: ${inputs.name}`)
+    prevDocument = await getSSMDocument(ssm, inputs.name)
 
     // Deploy
     let output = {}
-    if (!prevDocument) {
+    if (prevDocument === null) {
       log(`Creating new SSM Document..`)
       output = await createSSMDocument(ssm, inputs)
       log(`Document ${inputs.name} created successfully!`)
@@ -63,22 +66,24 @@ module.exports = class AwsSSMDocument extends Component {
 
   /**
    * Remove
+   * @param {*} inputs
    */
-  async remove() {
-    if (!this.state.name) {
-      log(`No state found.  Function appears removed already.  Aborting.`)
-      return
+  async remove(inputs = {}) {
+    const documentName = inputs.name || this.state.name
+    if (!documentName) {
+      throw new Error(`No state found. SSM Document appears removed already`)
     }
 
     // Retrieve data
-    const { name, region } = this.state
-    const { ssm } = getClients(this.credentials.aws, region)
+    const { ssm } = getClients(this.credentials.aws, inputs.region)
 
     // Delete document
-    log(`Removing AWS SSM Document ${name} from the ${region} region.`)
-    await deleteDocument(ssm, name)
-    log(`Successfully removed AWS SSM Document ${name} from the ${region} region.`)
+    log(`Removing AWS SSM Document ${documentName} from the ${inputs.region} region.`)
+    await deleteDocument(ssm, documentName)
+    log(`Successfully removed AWS SSM Document ${documentName} from the ${inputs.region} region.`)
     this.state = {}
     return {}
   }
 }
+
+module.exports = AwsSSMDocument

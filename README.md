@@ -32,7 +32,7 @@ stage: dev                       # (optional) serverless dashboard stage. defaul
 inputs:
   name: my-document-name         # (optional) name of the document. default is auto-generated prepending stage name.
   type: Command                  # (optional) SSM document type. default it "Command".
-  region: us-east-2              # (optional) aws region to deploy to. default is us-east-1.
+  region: us-east-1              # (optional) aws region to deploy to. default is us-east-1.
   file: ./document.yml           # (required) document file content.
 ```
 
