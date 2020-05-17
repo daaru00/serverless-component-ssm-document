@@ -206,6 +206,43 @@ const deleteDocument = async (ssm, documentName) => {
 }
 
 /**
+ * Get account IDs that has share permissions
+ * @param {AWS.SSM} ssm
+ * @param {string} documentName
+ * @returns {string[]}
+ */
+const getDocumentAccountPermissions = async (ssm, documentName) => {
+  const { AccountIds } = await ssm
+    .describeDocumentPermission({
+      Name: documentName
+    })
+    .promise()
+  return AccountIds
+}
+
+/**
+ * Modify account IDs that has share permissions
+ * @param {AWS.SSM} ssm
+ * @param {string} documentName
+ * @param {string[]} accountIdsToAdd
+ * @param {string[]} accountIdsToRemove
+ */
+const modifyDocumentAccountPermissions = async (
+  ssm,
+  documentName,
+  accountIdsToAdd = [],
+  accountIdsToRemove = []
+) => {
+  await ssm
+    .modifyDocumentPermission({
+      Name: documentName,
+      AccountIdsToAdd: accountIdsToAdd,
+      AccountIdsToRemove: accountIdsToRemove
+    })
+    .promise()
+}
+
+/**
  * Exports
  */
 module.exports = {
@@ -217,5 +254,7 @@ module.exports = {
   prepareInputs,
   createSSMDocument,
   updateSSMDocument,
-  deleteDocument
+  deleteDocument,
+  getDocumentAccountPermissions,
+  modifyDocumentAccountPermissions
 }

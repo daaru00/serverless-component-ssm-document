@@ -7,7 +7,9 @@ const {
   prepareInputs,
   createSSMDocument,
   updateSSMDocument,
-  deleteDocument
+  deleteDocument,
+  getDocumentAccountPermissions,
+  modifyDocumentAccountPermissions
 } = require('./utils')
 
 class AwsSSMDocument extends Component {
@@ -57,6 +59,28 @@ class AwsSSMDocument extends Component {
       log(`Document ${inputs.name} updated successfully!`)
     }
 
+    // Check permissions
+    log(`Checking document ${inputs.name} permissions..`)
+    inputs.accountIds = inputs.accountIds || []
+    inputs.accountIds.map((accountId) => accountId.toString())
+    const currentAccountIds = await getDocumentAccountPermissions(ssm, inputs.name)
+    const accountIdsToAdd = inputs.accountIds.filter(
+      (accountId) => !currentAccountIds.includes(accountId)
+    )
+    const accountIdsToRemove = currentAccountIds.filter(
+      (accountId) => !inputs.accountIds.includes(accountId)
+    )
+    if (accountIdsToAdd.length !== 0 || accountIdsToRemove.length !== 0) {
+      log(
+        `Modifying document ${inputs.name} permissions: adding ${accountIdsToAdd.length} and removing ${accountIdsToRemove.length}..`
+      )
+      await modifyDocumentAccountPermissions(ssm, inputs.name, accountIdsToAdd, accountIdsToRemove)
+      log(`Document ${inputs.name} permissions updated successfully!`)
+    } else {
+      log(`Document ${inputs.name} permissions are already in sync.`)
+    }
+    output.accountIds = inputs.accountIds
+
     // Update state
     this.state = output
 
@@ -71,7 +95,7 @@ class AwsSSMDocument extends Component {
   async remove(inputs = {}) {
     const documentName = inputs.name || this.state.name
     if (!documentName) {
-      throw new Error(`No components found. Components seems already removed`)
+      throw new Error(`No components found. Components seems already removed.`)
     }
 
     // Retrieve data

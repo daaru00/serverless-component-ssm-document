@@ -48,6 +48,8 @@ inputs:
   type: Command                  # (optional) SSM document type. default it "Command".
   region: us-east-1              # (optional) aws region to deploy to. default is us-east-1.
   file: ./document.yml           # (required) document file content.
+  accountIds:
+    - '123456789123'             # (optional) id of aws accounts to share document to
 ```
 
 Create SSM document file, configured in `file` inputs configuration:
