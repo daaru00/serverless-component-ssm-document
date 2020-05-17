@@ -214,7 +214,8 @@ const deleteDocument = async (ssm, documentName) => {
 const getDocumentAccountPermissions = async (ssm, documentName) => {
   const { AccountIds } = await ssm
     .describeDocumentPermission({
-      Name: documentName
+      Name: documentName,
+      PermissionType: 'Share'
     })
     .promise()
   return AccountIds
@@ -236,6 +237,7 @@ const modifyDocumentAccountPermissions = async (
   await ssm
     .modifyDocumentPermission({
       Name: documentName,
+      PermissionType: 'Share',
       AccountIdsToAdd: accountIdsToAdd,
       AccountIdsToRemove: accountIdsToRemove
     })
