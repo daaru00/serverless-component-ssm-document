@@ -71,7 +71,7 @@ class AwsSSMDocument extends Component {
   async remove(inputs = {}) {
     const documentName = inputs.name || this.state.name
     if (!documentName) {
-      throw new Error(`No state found. SSM Document appears removed already`)
+      throw new Error(`No components found. Components seems already removed`)
     }
 
     // Retrieve data
