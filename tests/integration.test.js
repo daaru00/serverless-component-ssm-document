@@ -37,7 +37,7 @@ const instanceYaml = {
 
 // get aws credentials from env
 const credentials = getCredentials()
-const { ssm } = getClients(credentials.aws, process.env.AWS_DEFAULT_REGION)
+const { ssm } = getClients(credentials.aws, process.env.SERVERLESS_REGION)
 
 // get serverless access key from env and construct sdk
 const sdk = getServerlessSdk(instanceYaml.org)
