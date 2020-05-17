@@ -1,4 +1,4 @@
-name: Integration Tests
+name: Release Component Version
 
 on:
   push:
