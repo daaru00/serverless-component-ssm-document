@@ -7,7 +7,9 @@ const {
   prepareInputs,
   createSSMDocument,
   updateSSMDocument,
-  deleteDocument
+  deleteDocument,
+  getDocumentAccountPermissions,
+  modifyDocumentAccountPermissions
 } = require('./utils')
 
 class AwsSSMDocument extends Component {
@@ -38,49 +40,82 @@ class AwsSSMDocument extends Component {
       const filesPath = await this.unzip(inputs.src, true)
       inputs.file = path.join(filesPath, inputs.file)
     }
-    inputs = prepareInputs(inputs, this.state, this.stage)
+    inputs = prepareInputs(inputs, this.state, this)
 
     // Check previous document
     let prevDocument = null
     log(`Checking if an AWS SSM Document has already been created with name: ${inputs.name}`)
-    prevDocument = await getSSMDocument(ssm, inputs.name)
+    prevDocument = await getSSMDocument(ssm, inputs.name, inputs.format)
 
     // Deploy
-    let output = {}
     if (prevDocument === null) {
       log(`Creating new SSM Document..`)
-      output = await createSSMDocument(ssm, inputs)
+      await createSSMDocument(ssm, inputs)
       log(`Document ${inputs.name} created successfully!`)
     } else {
       log(`Updating existing SSM Document..`)
-      output = await updateSSMDocument(ssm, inputs.name, inputs)
+      await updateSSMDocument(ssm, inputs.name, inputs)
       log(`Document ${inputs.name} updated successfully!`)
     }
 
+    // Check permissions
+    log(`Checking document ${inputs.name} permissions..`)
+    inputs.accountIds = inputs.accountIds || []
+    inputs.accountIds = inputs.accountIds.map((accountId) => accountId.toString())
+    const currentAccountIds = await getDocumentAccountPermissions(ssm, inputs.name)
+    const accountIdsToAdd = inputs.accountIds.filter(
+      (accountId) => !currentAccountIds.includes(accountId)
+    )
+    const accountIdsToRemove = currentAccountIds.filter(
+      (accountId) => !inputs.accountIds.includes(accountId)
+    )
+
+    if (accountIdsToAdd.length !== 0 || accountIdsToRemove.length !== 0) {
+      log(
+        `Modifying document ${inputs.name} permissions: adding ${accountIdsToAdd.length} and removing ${accountIdsToRemove.length}..`
+      )
+      await modifyDocumentAccountPermissions(ssm, inputs.name, accountIdsToAdd, accountIdsToRemove)
+      log(`Document ${inputs.name} permissions updated successfully!`)
+    } else {
+      log(`Document ${inputs.name} permissions are already in sync.`)
+    }
+
     // Update state
-    this.state = output
+    this.state = await getSSMDocument(ssm, inputs.name, inputs.format)
+    delete this.state.content // too long
+    this.state.region = inputs.region
+    this.state.accountIds = inputs.accountIds
 
     // Export outputs
-    return output
+    return this.state
   }
 
   /**
    * Remove
    * @param {*} inputs
    */
-  async remove(inputs = {}) {
-    const documentName = inputs.name || this.state.name
+  async remove() {
+    const documentName = this.state.name
     if (!documentName) {
-      throw new Error(`No components found. Components seems already removed`)
+      log(`No components found. Components seems already removed.`)
+      return {}
     }
 
     // Retrieve data
-    const { ssm } = getClients(this.credentials.aws, inputs.region)
+    const { ssm } = getClients(this.credentials.aws, this.state.region)
+
+    // Remove all permissions
+    const currentAccountIds = await getDocumentAccountPermissions(ssm, documentName)
+    if (currentAccountIds.length !== 0) {
+      log(`Removing AWS SSM Document ${documentName} permissions..`)
+      await modifyDocumentAccountPermissions(ssm, documentName, [], currentAccountIds)
+      log(`Successfully remove AWS SSM Document ${documentName} permissions!`)
+    }
 
     // Delete document
-    log(`Removing AWS SSM Document ${documentName} from the ${inputs.region} region.`)
+    log(`Removing AWS SSM Document ${documentName}..`)
     await deleteDocument(ssm, documentName)
-    log(`Successfully removed AWS SSM Document ${documentName} from the ${inputs.region} region.`)
+    log(`Successfully removed AWS SSM Document ${documentName}!`)
     this.state = {}
     return {}
   }

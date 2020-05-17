@@ -10,7 +10,7 @@
     "remove": "serverless remove --debug",
     "publish": "serverless registry publish",
     "publish:dev": "serverless registry publish --dev",
-    "test": "jest ./tests/integration.test.js --testEnvironment node --verbose=true",
+    "test": "jest ./tests/integration.test.js --testEnvironment node --verbose=true --runInBand",
     "lint": "eslint . --fix --cache"
   },
   "author": "Fabio Gollinucci <fbgolly@gmail.com>",
