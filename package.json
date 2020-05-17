@@ -6,8 +6,8 @@
     "access": "public"
   },
   "scripts": {
-    "deploy": "npm run publish:dev && serverless deploy --debug",
-    "remove": "npm run publish:dev && serverless remove --debug",
+    "deploy": "serverless deploy --debug",
+    "remove": "serverless remove --debug",
     "publish": "serverless registry publish",
     "publish:dev": "serverless registry publish --dev",
     "test": "jest ./tests/integration.test.js --testEnvironment node --verbose=true --runInBand",

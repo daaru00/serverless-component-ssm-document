@@ -24,14 +24,14 @@ const testAccountPermissions2 = '123456789124'
 // the yaml file we're testing against
 const instanceYaml = {
   org: 'daaru' || process.env.SERVERLESS_ORG,
-  app: 'test-ssm-document' || process.env.SERVERLESS_APP,
+  app: 'ssm' || process.env.SERVERLESS_APP,
   component: 'aws-ssm-document@dev',
-  name: `aws-ssm-integration-tests-${randomId()}`,
-  stage: 'dev',
+  name: `my-document-${randomId()}`,
+  stage: 'test',
   inputs: {
     src: srcPath,
     file: documentFile,
-    region: process.env.AWS_DEFAULT_REGION
+    region: process.env.SERVERLESS_REGION
   }
 }
 
@@ -56,12 +56,12 @@ it('should successfully deploy ssm document', async () => {
   const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
   expect(instance.outputs.name).toBeDefined()
 
-  const document = await getSSMDocument(ssm, instance.outputs.name, '$LATEST', 'YAML')
+  const document = await getSSMDocument(ssm, instance.outputs.name, 'YAML', '$LATEST')
   expect(document.name).toEqual(instance.outputs.name)
   expect(document.content).toEqual(fs.readFileSync(path.join(srcPath, documentFile)).toString())
 })
 
-it('should successfully update content', async () => {
+it('should successfully update content from file', async () => {
   const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
   expect(instance.outputs.name).toBeDefined()
 
@@ -70,10 +70,42 @@ it('should successfully update content', async () => {
   await sdk.deploy(instanceYaml, credentials, slsConfig)
   expect(instance.outputs.name).toBeDefined()
 
-  const document = await getSSMDocument(ssm, instance.outputs.name, '$LATEST', 'YAML')
+  const document = await getSSMDocument(ssm, instance.outputs.name, 'YAML', '$LATEST')
   expect(document.content).toEqual(
     fs.readFileSync(path.join(srcPath, documentFileChanged)).toString()
   )
+})
+
+it('should successfully update content', async () => {
+  const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
+  expect(instance.outputs.name).toBeDefined()
+
+  delete instanceYaml.inputs.file
+  instanceYaml.inputs.content = {
+    schemaVersion: '2.2',
+    description: 'Example document with other changes',
+    parameters: {
+      Message: {
+        type: 'String',
+        description: 'Example parameter changed',
+        default: 'Hello World!'
+      }
+    },
+    mainSteps: [
+      {
+        action: 'aws:runShellScript',
+        name: 'exampleWithChanges',
+        inputs: {
+          runCommand: ['echo {{Message}}']
+        }
+      }
+    ]
+  }
+  await sdk.deploy(instanceYaml, credentials, slsConfig)
+  expect(instance.outputs.name).toBeDefined()
+
+  const document = await getSSMDocument(ssm, instance.outputs.name, 'JSON', '$LATEST')
+  expect(document.content).toEqual(JSON.stringify(instanceYaml.inputs.content))
 })
 
 it('should successfully add permissions', async () => {

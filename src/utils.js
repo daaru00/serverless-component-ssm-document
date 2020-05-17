@@ -151,6 +151,7 @@ const prepareInputs = (inputs, state, instance) => {
     format,
     content,
     file: inputs.file,
+    region: inputs.region,
     accountIds: inputs.accountIds
   }
 }
@@ -195,6 +196,7 @@ const updateSSMDocument = async (ssm, documentName, inputs) => {
     res = await ssm
       .updateDocument({
         Name: documentName,
+        DocumentFormat: inputs.format,
         Content: inputs.content,
         DocumentVersion: '$LATEST'
       })
@@ -240,17 +242,11 @@ const updateSSMDocument = async (ssm, documentName, inputs) => {
  * @param {string} documentName
  */
 const deleteDocument = async (ssm, documentName) => {
-  try {
-    await ssm
-      .deleteDocument({
-        Name: documentName
-      })
-      .promise()
-  } catch (e) {
-    if (e.code !== 'InvalidDocument') {
-      throw e
-    }
-  }
+  await ssm
+    .deleteDocument({
+      Name: documentName
+    })
+    .promise()
 }
 
 /**

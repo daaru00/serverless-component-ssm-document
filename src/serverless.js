@@ -83,6 +83,7 @@ class AwsSSMDocument extends Component {
     // Update state
     this.state = await getSSMDocument(ssm, inputs.name, inputs.format)
     delete this.state.content // too long
+    this.state.region = inputs.region
     this.state.accountIds = inputs.accountIds
 
     // Export outputs
@@ -93,23 +94,28 @@ class AwsSSMDocument extends Component {
    * Remove
    * @param {*} inputs
    */
-  async remove(inputs = {}) {
-    const documentName = inputs.name || this.state.name
+  async remove() {
+    const documentName = this.state.name
     if (!documentName) {
-      throw new Error(`No components found. Components seems already removed.`)
+      log(`No components found. Components seems already removed.`)
+      return {}
     }
 
     // Retrieve data
-    const { ssm } = getClients(this.credentials.aws, inputs.region)
+    const { ssm } = getClients(this.credentials.aws, this.state.region)
 
     // Remove all permissions
     const currentAccountIds = await getDocumentAccountPermissions(ssm, documentName)
-    await modifyDocumentAccountPermissions(ssm, documentName, [], currentAccountIds)
+    if (currentAccountIds.length !== 0) {
+      log(`Removing AWS SSM Document ${documentName} permissions..`)
+      await modifyDocumentAccountPermissions(ssm, documentName, [], currentAccountIds)
+      log(`Successfully remove AWS SSM Document ${documentName} permissions!`)
+    }
 
     // Delete document
-    log(`Removing AWS SSM Document ${documentName} from the ${inputs.region} region.`)
+    log(`Removing AWS SSM Document ${documentName}..`)
     await deleteDocument(ssm, documentName)
-    log(`Successfully removed AWS SSM Document ${documentName} from the ${inputs.region} region.`)
+    log(`Successfully removed AWS SSM Document ${documentName}!`)
     this.state = {}
     return {}
   }
