@@ -42,6 +42,16 @@ const { ssm } = getClients(credentials.aws, process.env.AWS_DEFAULT_REGION)
 // get serverless access key from env and construct sdk
 const sdk = getServerlessSdk(instanceYaml.org)
 
+// clean up the instance after tests
+afterAll(async () => {
+  try {
+    await sdk.remove(instanceYaml, credentials)
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err)
+  }
+})
+
 it('should successfully deploy ssm document', async () => {
   const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
   expect(instance.outputs.name).toBeDefined()
@@ -49,8 +59,6 @@ it('should successfully deploy ssm document', async () => {
   const document = await getSSMDocument(ssm, instance.outputs.name, '$LATEST', 'YAML')
   expect(document.name).toEqual(instance.outputs.name)
   expect(document.content).toEqual(fs.readFileSync(path.join(srcPath, documentFile)).toString())
-
-  await sdk.remove(instanceYaml, credentials)
 })
 
 it('should successfully update content', async () => {
@@ -66,65 +74,60 @@ it('should successfully update content', async () => {
   expect(document.content).toEqual(
     fs.readFileSync(path.join(srcPath, documentFileChanged)).toString()
   )
-
-  await sdk.remove(instanceYaml, credentials)
 })
 
 it('should successfully add permissions', async () => {
+  instanceYaml.inputs.accountIds = []
+
+  let permissions
   const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.name).toBeDefined()
+  permissions = await getDocumentAccountPermissions(ssm, instance.outputs.name)
+  expect(instance.outputs.accountIds).toBeDefined()
+  expect(instance.outputs.accountIds).toEqual(instanceYaml.inputs.accountIds)
+  expect(permissions).toEqual(instanceYaml.inputs.accountIds)
 
   instanceYaml.inputs.accountIds = [testAccountPermissions]
 
   await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.accountIds).toBeDefined()
-
-  const permissions = await getDocumentAccountPermissions(ssm, instance.outputs.name)
-  expect(permissions).toHaveLength(1)
-  expect(permissions).toEqual([testAccountPermissions])
-
-  await sdk.remove(instanceYaml, credentials)
+  permissions = await getDocumentAccountPermissions(ssm, instance.outputs.name)
+  expect(permissions).toEqual(instanceYaml.inputs.accountIds)
 })
 
 it('should successfully remove permissions', async () => {
-  const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.name).toBeDefined()
-
   instanceYaml.inputs.accountIds = [testAccountPermissions]
 
-  await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.accountIds).toBeDefined()
+  let permissions
+  const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
+  permissions = await getDocumentAccountPermissions(ssm, instance.outputs.name)
+  expect(permissions).toEqual(instanceYaml.inputs.accountIds)
 
   instanceYaml.inputs.accountIds = []
 
   await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.accountIds).toBeDefined()
-
-  const permissions = await getDocumentAccountPermissions(ssm, instance.outputs.name)
-  expect(permissions).toHaveLength(0)
-
-  await sdk.remove(instanceYaml, credentials)
+  permissions = await getDocumentAccountPermissions(ssm, instance.outputs.name)
+  expect(permissions).toEqual(instanceYaml.inputs.accountIds)
 })
 
 it('should successfully edit permissions', async () => {
+  instanceYaml.inputs.accountIds = [testAccountPermissions]
+
+  let permissions
   const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.name).toBeDefined()
+  permissions = await getDocumentAccountPermissions(ssm, instance.outputs.name)
+  expect(permissions).toEqual(instanceYaml.inputs.accountIds)
 
   instanceYaml.inputs.accountIds = [testAccountPermissions, testAccountPermissions2]
 
   await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.accountIds).toBeDefined()
+  permissions = await getDocumentAccountPermissions(ssm, instance.outputs.name)
+  expect(permissions).toEqual(instanceYaml.inputs.accountIds)
 
   instanceYaml.inputs.accountIds = [testAccountPermissions2]
 
   await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.accountIds).toBeDefined()
-
-  const permissions = await getDocumentAccountPermissions(ssm, instance.outputs.name)
-  expect(permissions).toHaveLength(1)
-
-  await sdk.remove(instanceYaml, credentials)
-  expect(permissions).toEqual([testAccountPermissions2])
+  await sdk.deploy(instanceYaml, credentials, slsConfig)
+  permissions = await getDocumentAccountPermissions(ssm, instance.outputs.name)
+  expect(permissions).toEqual(instanceYaml.inputs.accountIds)
 })
 
 it('should successfully remove document', async () => {

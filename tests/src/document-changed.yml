@@ -6,7 +6,7 @@ parameters:
     description: "Example parameter"
     default: "Hello World"
 mainSteps:
-  - action: "aws:runPowerShellScript"
+  - action: "aws:runShellScript"
     name: "example"
     inputs:
       workingDirectory: "/tmp/"

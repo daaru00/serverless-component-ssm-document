@@ -1,4 +1,5 @@
 const fs = require('fs')
+const os = require('os')
 const path = require('path')
 const AWS = require('aws-sdk')
 
@@ -42,11 +43,11 @@ const getClients = (credentials, region) => {
  * Get SSM Document
  * @param {AWS.SSM} ssm
  * @param {string} documentName
- * @param {string} documentVersion
  * @param {string} documentFormat
+ * @param {string} documentVersion
  * @returns {object|null}
  */
-const getSSMDocument = async (ssm, documentName, documentVersion, documentFormat) => {
+const getSSMDocument = async (ssm, documentName, documentFormat, documentVersion) => {
   if (!documentName) {
     return null
   }
@@ -63,7 +64,7 @@ const getSSMDocument = async (ssm, documentName, documentVersion, documentFormat
       format: res.DocumentFormat,
       type: res.DocumentType,
       name: res.Name,
-      description: res.DocumentVersion,
+      version: res.DocumentVersion,
       timeout: res.VersionName,
       runtime: res.Status,
       content: res.Content
@@ -77,18 +78,62 @@ const getSSMDocument = async (ssm, documentName, documentVersion, documentFormat
 }
 
 /**
+ * Get shell document definition
+ * @param {string} scriptFile
+ * @param {object} parameters
+ * @param {string} description
+ * @returns {string}
+ */
+const getShellDocument = (scriptFile, parameters = {}, description = '') => {
+  if (fs.existsSync(scriptFile) == false) {
+    throw new Error(
+      `Cannot find input shell script file '${scriptFile}'. Check if file path is relative to src input settings.`
+    )
+  }
+  const scriptFileContent = fs.readFileSync(scriptFile).toString()
+
+  return JSON.stringify({
+    schemaVersion: '2.2',
+    description,
+    parameters,
+    mainSteps: [
+      {
+        action: 'aws:runShellScript',
+        name: 'RunShellScript',
+        inputs: {
+          runCommand: scriptFileContent.split(os.EOL)
+        }
+      }
+    ]
+  })
+}
+
+/**
  * Prepare inputs
  * @param {object} inputs
  * @param {object} state
- * @param {string} stage
+ * @param {object} instance
  */
-const prepareInputs = (inputs, state, stage) => {
-  let { content } = inputs
+const prepareInputs = (inputs, state, instance) => {
+  let content = ''
   let format = inputs.format || state.format
-  if (inputs.file) {
+  if (format === 'SHELL') {
+    format = 'JSON'
+    if (!inputs.file || inputs.file.trim() === '') {
+      throw new Error(
+        `File property is required when using SHELL format, it should point to a Shell script (.sh).`
+      )
+    }
+    content = getShellDocument(inputs.file, inputs.parameters || {}, inputs.description || '')
+  } else if (inputs.content && typeof inputs.content === 'string') {
+    content = inputs.content.trim()
+  } else if (inputs.content && typeof inputs.content === 'object') {
+    format = 'JSON'
+    content = JSON.stringify(inputs.content)
+  } else if (inputs.file) {
     if (fs.existsSync(inputs.file) == false) {
       throw new Error(
-        `Cannot find input file ${inputs.file}. Check if file path is relative to src input settings.`
+        `Cannot find input file '${inputs.file}'. Check if file path is relative to src input settings.`
       )
     }
     content = fs.readFileSync(inputs.file).toString()
@@ -96,14 +141,17 @@ const prepareInputs = (inputs, state, stage) => {
       .extname(inputs.file)
       .slice(1)
       .toUpperCase()
+    // normalize format names
     format = format === 'YML' ? 'YAML' : format
+    format = format === 'TXT' ? 'TEXT' : format
   }
   return {
-    name: inputs.name || state.name || `${stage}-${randomId()}`,
+    name: inputs.name || state.name || `${instance.app}-${instance.stage}-${instance.name}`,
     type: inputs.type || state.type || 'Command',
     format,
     content,
-    file: inputs.file
+    file: inputs.file,
+    accountIds: inputs.accountIds
   }
 }
 
