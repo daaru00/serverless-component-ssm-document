@@ -1,5 +1,6 @@
 const path = require('path')
 const { ServerlessSDK } = require('@serverless/platform-client')
+const { randomId } = require('../src/utils')
 const dotenv =
   require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') }).parsed || {}
 
@@ -44,10 +45,23 @@ const getCredentials = () => {
 }
 
 /**
+ * Get common yml configuration
+ */
+const getCommonConfig = () => ({
+  org: 'daaru' || process.env.SERVERLESS_ORG,
+  app: 'ssm' || process.env.SERVERLESS_APP,
+  component: 'aws-ssm-document@dev',
+  name: `my-document-${randomId()}`,
+  stage: 'test',
+  inputs: {}
+})
+
+/**
  * Exports
  */
 module.exports = {
   sleep,
   getServerlessSdk,
-  getCredentials
+  getCredentials,
+  getCommonConfig
 }

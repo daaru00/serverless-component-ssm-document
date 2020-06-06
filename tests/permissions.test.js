@@ -1,11 +1,5 @@
-const fs = require('fs')
 const path = require('path')
-const {
-  randomId,
-  getSSMDocument,
-  getClients,
-  getDocumentAccountPermissions
-} = require('../src/utils')
+const { randomId, getClients, getDocumentAccountPermissions } = require('../src/utils')
 const { getServerlessSdk, getCredentials } = require('./utils')
 
 // set enough timeout for deployment to finish
@@ -14,7 +8,6 @@ jest.setTimeout(30000)
 // configurations
 const srcPath = path.join(__dirname, 'src')
 const documentFile = 'document.yml'
-const documentFileChanged = 'document-changed.yml'
 const slsConfig = {
   debug: true
 }
@@ -31,7 +24,8 @@ const instanceYaml = {
   inputs: {
     src: srcPath,
     file: documentFile,
-    region: process.env.SERVERLESS_REGION
+    region: process.env.SERVERLESS_REGION,
+    accountIds: [testAccountPermissions]
   }
 }
 
@@ -52,60 +46,17 @@ afterAll(async () => {
   }
 })
 
-it('should successfully deploy ssm document', async () => {
+/**
+ * Tests
+ */
+
+it('should successfully create with permissions', async () => {
   const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.name).toBeDefined()
+  const permissions = await getDocumentAccountPermissions(ssm, instance.outputs.name)
 
-  const document = await getSSMDocument(ssm, instance.outputs.name, 'YAML', '$LATEST')
-  expect(document.name).toEqual(instance.outputs.name)
-  expect(document.content).toEqual(fs.readFileSync(path.join(srcPath, documentFile)).toString())
-})
-
-it('should successfully update content from file', async () => {
-  const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.name).toBeDefined()
-
-  instanceYaml.inputs.file = documentFileChanged
-
-  await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.name).toBeDefined()
-
-  const document = await getSSMDocument(ssm, instance.outputs.name, 'YAML', '$LATEST')
-  expect(document.content).toEqual(
-    fs.readFileSync(path.join(srcPath, documentFileChanged)).toString()
-  )
-})
-
-it('should successfully update content', async () => {
-  const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.name).toBeDefined()
-
-  delete instanceYaml.inputs.file
-  instanceYaml.inputs.content = {
-    schemaVersion: '2.2',
-    description: 'Example document with other changes',
-    parameters: {
-      Message: {
-        type: 'String',
-        description: 'Example parameter changed',
-        default: 'Hello World!'
-      }
-    },
-    mainSteps: [
-      {
-        action: 'aws:runShellScript',
-        name: 'exampleWithChanges',
-        inputs: {
-          runCommand: ['echo {{Message}}']
-        }
-      }
-    ]
-  }
-  await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.name).toBeDefined()
-
-  const document = await getSSMDocument(ssm, instance.outputs.name, 'JSON', '$LATEST')
-  expect(document.content).toEqual(JSON.stringify(instanceYaml.inputs.content))
+  expect(instance.outputs.accountIds).toBeDefined()
+  expect(instance.outputs.accountIds).toEqual(instanceYaml.inputs.accountIds)
+  expect(permissions).toEqual(instanceYaml.inputs.accountIds)
 })
 
 it('should successfully add permissions', async () => {
@@ -160,14 +111,4 @@ it('should successfully edit permissions', async () => {
   await sdk.deploy(instanceYaml, credentials, slsConfig)
   permissions = await getDocumentAccountPermissions(ssm, instance.outputs.name)
   expect(permissions).toEqual(instanceYaml.inputs.accountIds)
-})
-
-it('should successfully remove document', async () => {
-  const instance = await sdk.deploy(instanceYaml, credentials, slsConfig)
-  expect(instance.outputs.name).toBeDefined()
-
-  await sdk.remove(instanceYaml, credentials, slsConfig)
-
-  const document = await getSSMDocument(ssm, instance.outputs.name)
-  expect(document).toBeNull()
 })
