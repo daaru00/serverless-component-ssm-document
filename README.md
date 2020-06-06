@@ -135,6 +135,23 @@ inputs:
       property 2: "value"
   file: ./my-command.sh          # (required) Shell file command.
 ```
+can also automatically detect shell script from file extension:
+```yml
+# serverless.yml
+
+component: aws-ssm-document
+name: my-document
+org: daaru
+app: myApp
+stage: dev
+
+inputs:
+  src: '.'
+  region: us-east-1
+  name: my-document-name
+  description: "My Document"
+  file: ./my-command.sh          # (required) Shell file command.
+```
 
 Then create the shell command file `my-command.sh`:
 
