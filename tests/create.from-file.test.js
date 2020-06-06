@@ -13,6 +13,10 @@ const slsConfig = {
   debug: true
 }
 
+// get aws credentials from env
+const credentials = getCredentials()
+const { ssm } = getClients(credentials.aws, process.env.SERVERLESS_REGION)
+
 /**
  * Initial component configuration
  */
@@ -25,10 +29,6 @@ const instanceYamlFile = {
     region: process.env.SERVERLESS_REGION
   }
 }
-
-// get aws credentials from env
-const credentials = getCredentials()
-const { ssm } = getClients(credentials.aws, process.env.SERVERLESS_REGION)
 
 // get serverless access key from env and construct sdk
 const sdk = getServerlessSdk(instanceYaml.org)
