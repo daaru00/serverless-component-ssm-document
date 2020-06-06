@@ -12,8 +12,10 @@
     "publish:dev": "serverless registry publish --dev",
     "test": "jest ./tests/*.test.js --testEnvironment node --verbose=true --runInBand",
     "test:create": "jest ./tests/create.*.test.js --testEnvironment node --verbose=true --runInBand",
+    "test:create:shell": "jest ./tests/create.from-shell-script.test.js --testEnvironment node --verbose=true --runInBand",
     "test:remove": "jest ./tests/remove.test.js --testEnvironment node --verbose=true --runInBand",
     "test:edit": "jest ./tests/edit.*.test.js --testEnvironment node --verbose=true --runInBand",
+    "test:edit:shell": "jest ./tests/edit.from-shell-script.test.js --testEnvironment node --verbose=true --runInBand",
     "test:permissions": "jest ./tests/permissions.test.js --testEnvironment node --verbose=true --runInBand",
     "lint": "eslint . --fix --cache"
   },

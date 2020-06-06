@@ -136,14 +136,23 @@ const prepareInputs = (inputs, state, instance) => {
         `Cannot find input file '${inputs.file}'. Check if file path is relative to src input settings.`
       )
     }
-    content = fs.readFileSync(inputs.file).toString()
-    format = path
-      .extname(inputs.file)
-      .slice(1)
-      .toUpperCase()
+    format =
+      format ||
+      path
+        .extname(inputs.file)
+        .slice(1)
+        .toUpperCase()
     // normalize format names
     format = format === 'YML' ? 'YAML' : format
     format = format === 'TXT' ? 'TEXT' : format
+
+    // Check format
+    if (format === 'SH') {
+      format = 'JSON'
+      content = getShellDocument(inputs.file, inputs.parameters || {}, inputs.description || '')
+    } else {
+      content = fs.readFileSync(inputs.file).toString()
+    }
   }
   return {
     name: inputs.name || state.name || `${instance.app}-${instance.stage}-${instance.name}`,
