@@ -84,7 +84,7 @@ const getSSMDocument = async (ssm, documentName, documentFormat, documentVersion
  * @param {string} description
  * @returns {string}
  */
-const getShellDocument = (scriptFile, parameters = {}, description = '') => {
+const getShellDocument = (scriptFile, parameters = {}, description, workingDirectory) => {
   if (fs.existsSync(scriptFile) == false) {
     throw new Error(
       `Cannot find input shell script file '${scriptFile}'. Check if file path is relative to src input settings.`
@@ -101,6 +101,7 @@ const getShellDocument = (scriptFile, parameters = {}, description = '') => {
         action: 'aws:runShellScript',
         name: 'RunShellScript',
         inputs: {
+          workingDirectory,
           runCommand: scriptFileContent.split(os.EOL)
         }
       }
@@ -124,7 +125,12 @@ const prepareInputs = (inputs, state, instance) => {
         `File property is required when using SHELL format, it should point to a Shell script (.sh).`
       )
     }
-    content = getShellDocument(inputs.file, inputs.parameters || {}, inputs.description || '')
+    content = getShellDocument(
+      inputs.file,
+      inputs.parameters || {},
+      inputs.description,
+      inputs.workingDirectory
+    )
   } else if (inputs.content && typeof inputs.content === 'string') {
     content = inputs.content.trim()
   } else if (inputs.content && typeof inputs.content === 'object') {
@@ -149,11 +155,28 @@ const prepareInputs = (inputs, state, instance) => {
     // Check format
     if (format === 'SH') {
       format = 'JSON'
-      content = getShellDocument(inputs.file, inputs.parameters || {}, inputs.description || '')
+      content = getShellDocument(
+        inputs.file,
+        inputs.parameters || {},
+        inputs.description,
+        inputs.workingDirectory
+      )
     } else {
       content = fs.readFileSync(inputs.file).toString()
     }
   }
+
+  const tags = []
+  for (const key in inputs.tags) {
+    if (inputs.tags.hasOwnProperty(key)) {
+      const value = inputs.tags[key]
+      tags.push({
+        Key: key,
+        Value: value
+      })
+    }
+  }
+
   return {
     name: inputs.name || state.name || `${instance.app}-${instance.stage}-${instance.name}`,
     type: inputs.type || state.type || 'Command',
@@ -161,7 +184,8 @@ const prepareInputs = (inputs, state, instance) => {
     content,
     file: inputs.file,
     region: inputs.region,
-    accountIds: inputs.accountIds
+    accountIds: inputs.accountIds,
+    tags
   }
 }
 
@@ -177,7 +201,8 @@ const createSSMDocument = async (ssm, inputs) => {
       Name: inputs.name,
       DocumentType: inputs.type,
       DocumentFormat: inputs.format,
-      Content: inputs.content
+      Content: inputs.content,
+      Tags: inputs.tags
     })
     .promise()
 
@@ -207,7 +232,8 @@ const updateSSMDocument = async (ssm, documentName, inputs) => {
         Name: documentName,
         DocumentFormat: inputs.format,
         Content: inputs.content,
-        DocumentVersion: '$LATEST'
+        DocumentVersion: '$LATEST',
+        Tags: inputs.tags
       })
       .promise()
 

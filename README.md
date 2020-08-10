@@ -63,6 +63,9 @@ inputs:
             - "echo {{Message}}"
   accountIds:
     - '123456789123'             # (optional) id of aws accounts to share document to
+  tags:                          # (optional) document tags
+    foo: bar
+    foo1: bar1
 ```
 
 Can be configure to use a content file:
@@ -133,6 +136,7 @@ inputs:
     parameter 2:
       property 1: "value"
       property 2: "value"
+  workingDirectory: /tmp/        # (optional) Working directory where execute command to.
   file: ./my-command.sh          # (required) Shell file command.
 ```
 can also automatically detect shell script from file extension:
