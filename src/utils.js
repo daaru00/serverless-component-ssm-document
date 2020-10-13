@@ -142,12 +142,10 @@ const prepareInputs = (inputs, state, instance) => {
         `Cannot find input file '${inputs.file}'. Check if file path is relative to src input settings.`
       )
     }
-    format =
-      format ||
-      path
-        .extname(inputs.file)
-        .slice(1)
-        .toUpperCase()
+    format = path
+      .extname(inputs.file)
+      .slice(1)
+      .toUpperCase()
     // normalize format names
     format = format === 'YML' ? 'YAML' : format
     format = format === 'TXT' ? 'TEXT' : format
