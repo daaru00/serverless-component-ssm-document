@@ -1,5 +1,5 @@
 name: aws-ssm-document
-version: 1.4.1
+version: 1.4.2
 author: daaru
 org: daaru
 description: Deploys an AWS System Manager Document
