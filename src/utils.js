@@ -232,8 +232,7 @@ const updateSSMDocument = async (ssm, documentName, inputs) => {
         Name: documentName,
         DocumentFormat: inputs.format,
         Content: inputs.content,
-        DocumentVersion: '$LATEST',
-        Tags: inputs.tags
+        DocumentVersion: '$LATEST'
       })
       .promise()
 
