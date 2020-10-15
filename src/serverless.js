@@ -59,32 +59,44 @@ class AwsSSMDocument extends Component {
     }
 
     // Check permissions
-    log(`Checking document ${inputs.name} permissions..`)
     inputs.accountIds = inputs.accountIds || []
     inputs.accountIds = inputs.accountIds.map((accountId) => accountId.toString())
-    const currentAccountIds = await getDocumentAccountPermissions(ssm, inputs.name)
-    const accountIdsToAdd = inputs.accountIds.filter(
-      (accountId) => !currentAccountIds.includes(accountId)
-    )
-    const accountIdsToRemove = currentAccountIds.filter(
-      (accountId) => !inputs.accountIds.includes(accountId)
-    )
-
-    if (accountIdsToAdd.length !== 0 || accountIdsToRemove.length !== 0) {
+    if (inputs.accountIds.length > 0) {
       log(
-        `Modifying document ${inputs.name} permissions: adding ${accountIdsToAdd.length} and removing ${accountIdsToRemove.length}..`
+        `Checking document ${inputs.name} permissions for ${inputs.accountIds.length} provided accounts ids..`
       )
-      await modifyDocumentAccountPermissions(ssm, inputs.name, accountIdsToAdd, accountIdsToRemove)
-      log(`Document ${inputs.name} permissions updated successfully!`)
-    } else {
-      log(`Document ${inputs.name} permissions are already in sync.`)
+      const currentAccountIds = await getDocumentAccountPermissions(ssm, inputs.name)
+
+      // Calculate Delta
+      const accountIdsToAdd = inputs.accountIds.filter(
+        (accountId) => !currentAccountIds.includes(accountId)
+      )
+      const accountIdsToRemove = currentAccountIds.filter(
+        (accountId) => !inputs.accountIds.includes(accountId)
+      )
+
+      // Apply Delta
+      if (accountIdsToAdd.length !== 0 || accountIdsToRemove.length !== 0) {
+        log(
+          `Modifying document ${inputs.name} permissions: adding ${accountIdsToAdd.length} and removing ${accountIdsToRemove.length}..`
+        )
+        await modifyDocumentAccountPermissions(
+          ssm,
+          inputs.name,
+          accountIdsToAdd,
+          accountIdsToRemove
+        )
+        log(`Document ${inputs.name} permissions updated successfully!`)
+      } else {
+        log(`Document ${inputs.name} permissions are already in sync.`)
+      }
     }
 
     // Update state
     this.state = await getSSMDocument(ssm, inputs.name, inputs.format)
     delete this.state.content // too long
     this.state.region = inputs.region
-    this.state.accountIds = inputs.accountIds
+    this.state.accountIds = await getDocumentAccountPermissions(ssm, inputs.name)
 
     // Export outputs
     return this.state
