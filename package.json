@@ -33,6 +33,6 @@
     "eslint-plugin-prettier": "^3.0.1",
     "jest": "^25.2.0",
     "prettier": "^1.18.2",
-    "serverless": "^1.71.1"
+    "serverless": "^3.25.1"
   }
 }
